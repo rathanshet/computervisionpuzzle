@@ -1,0 +1,6 @@
+services:
+  - type: static
+    name: vision-play
+    env: static
+    buildCommand: ""
+    publishPath: "."
