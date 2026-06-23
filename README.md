@@ -2,6 +2,9 @@
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/rathanshet/computervisionpuzzle)
 
+🚀 **Live Demo**: [https://vision-play.onrender.com](https://vision-play.onrender.com)
+
+
 VisionPlay is a premium, web-based computer vision puzzle game hub that brings physical interaction to the browser using real-time webcam gesture processing and color matching algorithms.
 
 Designed with a state-of-the-art cyber-neon glassmorphism UI, VisionPlay runs entirely in the browser with **zero server-side processing dependencies**.
