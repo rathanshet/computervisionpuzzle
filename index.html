@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VisionPlay: Interactive CV Puzzle Hub</title>
+  <meta name="description" content="A state-of-the-art computer vision puzzle game hub using real-time webcam gestures and color tracking. Assemble jigsaw puzzles with hand pinches or solve chroma scavenger hunts.">
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- MediaPipe dependencies via jsDelivr CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Header Area -->
+    <header class="app-header glass-panel">
+      <div class="logo-section">
+        <div class="logo-icon">VP</div>
+        <div class="logo-text">
+          <h1>VisionPlay</h1>
+          <p>Computer Vision Puzzle Hub</p>
+        </div>
+      </div>
+      
+      <nav class="mode-tabs">
+        <button id="tab-jigsaw" class="tab-btn active" onclick="switchMode('jigsaw')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Gesture Jigsaw
+        </button>
+        <button id="tab-chroma" class="tab-btn" onclick="switchMode('chroma')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>
+          Chroma Match
+        </button>
+      </nav>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="game-grid">
+      
+      <!-- Left Column: CV Video Feed and Status Panel -->
+      <section class="cv-panel glass-panel">
+        <div class="panel-title">
+          <h2>Webcam Analysis</h2>
+          <span id="cv-status" class="status-badge">
+            <span class="status-dot"></span>
+            Camera Off
+          </span>
+        </div>
+        
+        <div class="webcam-container">
+          <video id="webcam-video" autoplay playsinline muted></video>
+          <canvas id="overlay-canvas"></canvas>
+          <div id="camera-loading" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Initializing CV Models...</p>
+          </div>
+        </div>
+        
+        <div class="cv-controls">
+          <button id="btn-toggle-cam" class="btn-neon" onclick="toggleCamera()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Initialize Camera
+          </button>
+        </div>
+
+        <div class="instruction-box">
+          <h4>How to Play</h4>
+          <!-- Jigsaw Instructions -->
+          <div id="instructions-jigsaw">
+            <ol>
+              <li>Enable your webcam and make sure your hand is visible.</li>
+              <li>Hover your index finger over a puzzle piece on the screen.</li>
+              <li>Pinch your <strong>index finger and thumb</strong> together to grab the piece.</li>
+              <li>Drag the piece to its target slot and release your pinch to drop/snap it in place!</li>
+            </ol>
+          </div>
+          <!-- Chroma Instructions (hidden by default) -->
+          <div id="instructions-chroma" style="display: none;">
+            <ul>
+              <li>Position a physical object inside the central circular target reticle.</li>
+              <li>Try to match the <strong>Target Color</strong> shown in the panel.</li>
+              <li>Hold the object steady. When the similarity reaches 85% or above, the match will trigger!</li>
+              <li>Solve as many colors as possible before the timer runs out.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Game Interactive Board -->
+      <section class="game-workspace glass-panel">
+        
+        <!-- Score/Header Row -->
+        <div class="game-header-bar">
+          <h2 id="game-title">Gesture Jigsaw Puzzle</h2>
+          <div class="stats-row">
+            <div class="stat-card">
+              <span class="stat-label">High Score</span>
+              <span id="stat-highscore" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label" id="lbl-metric">Moves / Score</span>
+              <span id="stat-metric-value" class="stat-value highlight">0</span>
+            </div>
+            <div class="stat-card" id="card-time-remaining">
+              <span class="stat-label" id="lbl-timer">Pieces Slotted</span>
+              <span id="stat-timer-value" class="stat-value">0/9</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calibration Warning Overlay -->
+        <div id="calibration-warning" class="calibration-alert" style="display: none;">
+          Please center your hand in camera view
+        </div>
+
+        <!-- Mode 1: Jigsaw View -->
+        <div id="view-jigsaw" class="game-mode-view active">
+          <div class="jigsaw-layout">
+            <div class="board-container">
+              <canvas id="jigsaw-canvas" width="480" height="480"></canvas>
+            </div>
+            
+            <div class="jigsaw-controls">
+              <div class="control-group">
+                <label for="jigsaw-grid-select">Grid Size</label>
+                <select id="jigsaw-grid-select" class="select-neon" onchange="resetJigsawGrid()">
+                  <option value="3" selected>3 x 3 (Easy)</option>
+                  <option value="4">4 x 4 (Medium)</option>
+                  <option value="5">5 x 5 (Hard)</option>
+                </select>
+              </div>
+              <button id="btn-shuffle" class="btn-neon secondary" onclick="shuffleJigsaw()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                Shuffle Board
+              </button>
+              <div class="control-group" style="margin-top: 12px; gap: 8px;">
+                <label>Custom Image Source</label>
+                <input type="file" id="jigsaw-upload" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+                <button class="btn-neon secondary" onclick="document.getElementById('jigsaw-upload').click()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                  Upload Image
+                </button>
+                <button id="btn-webcam-snapshot" class="btn-neon secondary" onclick="captureCameraSnapshot()" disabled>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  Snapshot Camera
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode 2: Chroma Match View -->
+        <div id="view-chroma" class="game-mode-view">
+          <div class="chroma-layout">
+            <div class="color-target-panel">
+              <span class="stat-label">Target Color</span>
+              <div id="chroma-target-swatch" class="color-swatch-glow" style="background-color: #ff007f;"></div>
+              <div id="chroma-target-name" class="target-color-name" style="color: #ff007f;">HOT PINK</div>
+              <button id="btn-chroma-skip" class="btn-neon secondary" onclick="skipChromaColor()">
+                Skip Color
+              </button>
+            </div>
+            
+            <div class="color-compare-panel">
+              <div class="match-metric">
+                <div class="metric-label">
+                  <span>Target vs Webcam Match</span>
+                  <span id="chroma-percent">0%</span>
+                </div>
+                <div class="progress-bar-container">
+                  <div id="chroma-progress-fill" class="progress-bar-fill"></div>
+                </div>
+              </div>
+              
+              <div class="match-metric">
+                <div class="metric-label">
+                  <span>Dominant Detected Color</span>
+                </div>
+                <div id="chroma-detected-badge" class="match-status-badge">
+                  Analyzing center reticle...
+                </div>
+              </div>
+              
+              <button id="btn-chroma-start" class="btn-neon" onclick="startChromaGame()">
+                Start Challenge
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Victory Banner Overlay -->
+        <div id="victory-overlay" class="victory-overlay">
+          <div class="victory-title">VICTORY CHALLENGE MET!</div>
+          <div class="victory-stats">
+            <div class="stat-card">
+              <span class="stat-label">Final Stat</span>
+              <span id="victory-stat-value" class="stat-value">--</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Bonus Multiplier</span>
+              <span id="victory-bonus-value" class="stat-value">x1.5</span>
+            </div>
+          </div>
+          <button id="btn-victory-action" class="btn-neon" onclick="dismissVictory()">
+            Play Again
+          </button>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Flash Overlay for webcam snapshot -->
+  <div id="camera-flash-overlay" class="flash-overlay"></div>
+
+  <!-- Game Scripts -->
+  <script src="cv.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
