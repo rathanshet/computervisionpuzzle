@@ -4,7 +4,7 @@
   "description": "Interactive Computer Vision Puzzle Hub",
   "main": "index.html",
   "scripts": {
-    "dev": "npx http-server -p 8080"
+    "dev": "npx http-server -p 8080 -c-1"
   },
   "dependencies": {
     "http-server": "^14.1.1"
