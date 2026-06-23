@@ -426,15 +426,15 @@ const JigsawGame = {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     
     // Draw board frame outline
-    ctx.fillStyle = "rgba(18, 18, 29, 0.5)";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
     ctx.fillRect(this.boardRect.x, this.boardRect.y, this.boardRect.w, this.boardRect.h);
     
-    ctx.strokeStyle = "rgba(139, 92, 246, 0.3)";
+    ctx.strokeStyle = "rgba(99, 102, 241, 0.25)";
     ctx.lineWidth = 2;
     ctx.strokeRect(this.boardRect.x, this.boardRect.y, this.boardRect.w, this.boardRect.h);
     
     // Draw target board slots (grid lines inside)
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.06)";
     ctx.lineWidth = 1;
     const stepW = this.boardRect.w / this.gridSize;
     const stepH = this.boardRect.h / this.gridSize;
