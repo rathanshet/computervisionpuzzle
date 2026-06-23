@@ -1,6 +1,6 @@
 services:
   - type: web
     name: vision-play
-    env: static
+    runtime: static
     buildCommand: ""
-    publishPath: "."
+    staticPublishPath: "."
